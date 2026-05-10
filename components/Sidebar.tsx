@@ -1,9 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export default function Sidebar({ active }: { active: string }) {
-  const router = useRouter();
   const items = [
     { key: "roles", label: "Open Roles", icon: "💼", href: "/dashboard" },
     { key: "new", label: "Create Role", icon: "+", href: "/dashboard/new" },
@@ -30,15 +28,21 @@ export default function Sidebar({ active }: { active: string }) {
           </Link>
         ))}
         <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text3)", padding: "12px 8px 6px" }}>Settings</div>
-        {[
-          { label: "Import from ATS", icon: "↑" },
-          { label: "Preferences", icon: "⚙" },
-        ].map(item => (
-          <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 6, marginBottom: 2, fontSize: 13, cursor: "pointer", color: "var(--text2)" }}
-            onClick={() => alert(`${item.label} — coming soon`)}>
-            <span>{item.icon}</span>{item.label}
+        <Link href="/dashboard/import" style={{ textDecoration: "none" }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+            borderRadius: 6, marginBottom: 2, fontSize: 13, cursor: "pointer",
+            background: active === "import" ? "var(--blue-bg)" : "transparent",
+            color: active === "import" ? "var(--blue-text)" : "var(--text2)",
+            fontWeight: active === "import" ? 600 : 400,
+          }}>
+            <span>↑</span>Import Resumes
           </div>
-        ))}
+        </Link>
+        <div key="preferences" style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 6, marginBottom: 2, fontSize: 13, cursor: "pointer", color: "var(--text2)" }}
+          onClick={() => alert("Preferences — coming soon")}>
+          <span>⚙</span>Preferences
+        </div>
       </div>
       <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

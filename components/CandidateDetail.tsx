@@ -27,7 +27,7 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
   const [notes, setNotes] = useState("");
   const [showResume, setShowResume] = useState(false);
 
-  const idx = parseInt(c.id.replace("c",""))-1;
+  const idx = Math.abs(c.id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0));
   const [bg, fg] = AVATAR_COLORS[idx % 10].split(" ");
 
   async function fetchOutreach() {

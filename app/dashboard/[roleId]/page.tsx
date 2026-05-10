@@ -149,7 +149,8 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
             </div>
             <div style={{ flex: 1, overflowY: "auto" }}>
               {filtered.map((c, i) => {
-                const [bg, fg] = AVATAR_COLORS[parseInt(c.id.replace("c",""))-1] ?? AVATAR_COLORS[0];
+                const avatarIdx = Math.abs(c.id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % 10;
+                const [bg, fg] = AVATAR_COLORS[avatarIdx];
                 return (
                   <div
                     key={c.id}
