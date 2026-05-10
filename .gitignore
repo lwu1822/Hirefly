@@ -33,3 +33,4 @@ next-env.d.ts
 *.pem
 Thumbs.db
 EOF.env.local
+.next/
