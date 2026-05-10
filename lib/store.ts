@@ -19,6 +19,10 @@ export function addRole(role: Role) {
   roles.push(role);
 }
 
+export function removeRole(id: string) {
+  roles = roles.filter(r => r.id !== id);
+}
+
 export function updateRubric(roleId: string, rubric: RubricWeights) {
   const role = roles.find(r => r.id === roleId);
   if (role) role.rubric = rubric;

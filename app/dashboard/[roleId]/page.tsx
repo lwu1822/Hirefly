@@ -130,6 +130,16 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
           {role && <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 10, background: "var(--blue-bg)", color: "var(--blue-text)", fontWeight: 500 }}>{role.team}</span>}
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 12, color: "var(--text3)" }}>{reranking ? "⟳ Re-ranking…" : `${filtered.length} candidates ranked`}</span>
+          <button
+            className="btn btn-danger btn-sm"
+            onClick={async () => {
+              if (!confirm("Close this role? It will be removed from the dashboard.")) return;
+              await fetch(`/api/roles/${roleId}`, { method: "DELETE" });
+              router.push("/dashboard");
+            }}
+          >
+            Close Role
+          </button>
         </div>
         <div className="content-area">
           {/* Candidate list */}

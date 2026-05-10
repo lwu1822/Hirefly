@@ -14,8 +14,35 @@ export default function NewRolePage() {
   const router = useRouter();
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [rubric, setRubric] = useState<RubricOutput | null>(null);
   const [error, setError] = useState("");
+
+  async function publish() {
+    if (!rubric) return;
+    setPublishing(true);
+    try {
+      await fetch("/api/roles", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: rubric.title,
+          team: rubric.team,
+          level: rubric.level,
+          description,
+          rubric: {
+            gca: rubric.rubric.gca?.weight ?? 25,
+            rrk: rubric.rubric.rrk?.weight ?? 35,
+            leadership: rubric.rubric.leadership?.weight ?? 20,
+            googleyness: rubric.rubric.googleyness?.weight ?? 20,
+          },
+        }),
+      });
+      router.push("/dashboard");
+    } catch {
+      setError("Failed to publish role.");
+    }
+    setPublishing(false);
+  }
 
   async function generate() {
     if (description.length < 15) { setError("Please describe the role in more detail."); return; }
@@ -78,8 +105,8 @@ export default function NewRolePage() {
                     <div style={{ fontSize: 18, fontWeight: 700 }}>{rubric.title}</div>
                     <div style={{ fontSize: 13, color: "var(--text2)" }}>{rubric.team} · {rubric.level}</div>
                   </div>
-                  <button className="btn btn-primary btn-sm" onClick={() => { alert("Role published! Candidates can now apply at /apply/r-new"); router.push("/dashboard"); }}>
-                    Publish Role ✓
+                  <button className="btn btn-primary btn-sm" onClick={publish} disabled={publishing}>
+                    {publishing ? "Publishing…" : "Publish Role ✓"}
                   </button>
                 </div>
                 {Object.entries(rubric.rubric).map(([key, attr]) => (

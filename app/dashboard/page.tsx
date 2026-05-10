@@ -14,6 +14,13 @@ export default function DashboardPage() {
     fetch("/api/roles").then(r => r.json()).then(d => setRoles(d.roles));
   }, []);
 
+  async function closeRole(e: React.MouseEvent, roleId: string) {
+    e.stopPropagation();
+    if (!confirm("Close this role? It will be removed from the dashboard.")) return;
+    await fetch(`/api/roles/${roleId}`, { method: "DELETE" });
+    setRoles(prev => prev.filter(r => r.id !== roleId));
+  }
+
   return (
     <div className="app-layout">
       <Sidebar active="roles" />
@@ -54,10 +61,20 @@ export default function DashboardPage() {
                     <div style={{ fontSize: 11, color: "var(--text3)" }}>days open</div>
                   </div>
                 </div>
-                {role.candidateCount > 0
-                  ? <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 10, background: "var(--green-bg)", color: "var(--green-text)", fontWeight: 500 }}>Ranking complete</span>
-                  : <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 10, background: "var(--bg2)", color: "var(--text3)" }}>No candidates</span>
-                }
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  {role.candidateCount > 0
+                    ? <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 10, background: "var(--green-bg)", color: "var(--green-text)", fontWeight: 500 }}>Ranking complete</span>
+                    : <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 10, background: "var(--bg2)", color: "var(--text3)" }}>No candidates</span>
+                  }
+                  <button
+                    onClick={e => closeRole(e, role.id)}
+                    style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "transparent", border: "1px solid var(--border)", color: "var(--text3)", cursor: "pointer" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#dc2626"; (e.currentTarget as HTMLButtonElement).style.color = "#dc2626"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text3)"; }}
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             ))}
           </div>
