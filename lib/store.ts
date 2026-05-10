@@ -46,6 +46,20 @@ export function addCandidate(candidate: Candidate) {
   candidates.push(candidate);
 }
 
+export function updateCandidateScores(
+  id: string,
+  scores: { gca: number; rrk: number; leadership: number; googleyness: number; evidence: string[] }
+) {
+  const c = candidates.find(c => c.id === id);
+  if (c) {
+    c.gca = scores.gca;
+    c.rrk = scores.rrk;
+    c.leadership = scores.leadership;
+    c.googleyness = scores.googleyness;
+    c.evidence = scores.evidence;
+  }
+}
+
 export function computeScore(c: Candidate, weights: RubricWeights): number {
   const total = weights.gca + weights.rrk + weights.leadership + weights.googleyness;
   if (total === 0) return 0;

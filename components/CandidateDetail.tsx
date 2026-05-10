@@ -14,11 +14,15 @@ interface Props {
   roleId: string;
   rank: number;
   onAction: (id: string, action: "advanced" | "rejected") => void;
+  onScored?: (id: string, scores: { gca: number; rrk: number; leadership: number; googleyness: number; evidence: string[] }) => void;
 }
 
-export default function CandidateDetail({ candidate: c, roleId, rank, onAction }: Props) {
+export default function CandidateDetail({ candidate: c, roleId, rank, onAction, onScored }: Props) {
   const [outreach, setOutreach] = useState<{personalized:string,generic:string}|null>(null);
   const [loadingOutreach, setLoadingOutreach] = useState(false);
+  const [loadingScore, setLoadingScore] = useState(false);
+  const [aiScored, setAiScored] = useState(false);
+  const [scoreError, setScoreError] = useState("");
   const [tone, setTone] = useState("warm");
   const [notes, setNotes] = useState("");
   const [showResume, setShowResume] = useState(false);
@@ -39,6 +43,24 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction }
     setLoadingOutreach(false);
   }
 
+  async function runAiScore() {
+    setLoadingScore(true);
+    setScoreError("");
+    try {
+      const res = await fetch("/api/candidates/ai-score", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidateId: c.id, roleId }),
+      });
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+      setAiScored(true);
+      onScored?.(c.id, { gca: d.gca, rrk: d.rrk, leadership: d.leadership, googleyness: d.googleyness, evidence: d.evidence });
+    } catch (e) {
+      setScoreError(String(e));
+    }
+    setLoadingScore(false);
+  }
+
   return (
     <div style={{ padding: 20, maxWidth: 780 }}>
       {/* Header */}
@@ -48,7 +70,14 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction }
             {initials(c.name)}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{c.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{c.name}</div>
+              {aiScored && (
+                <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "#dcfce7", color: "#15803d", fontWeight: 600, border: "1px solid #86efac" }}>
+                  ✦ AI-scored
+                </span>
+              )}
+            </div>
             <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 8 }}>{c.title} at {c.company} · {c.school} · {c.yoe} years exp</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
               {c.skills.map(s => (
@@ -61,17 +90,33 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction }
             <div style={{ fontSize: 12, color: "var(--text3)" }}>overall · rank #{rank}</div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
           <button className="btn btn-primary btn-sm" onClick={() => onAction(c.id, "advanced")}>📞 Phone Screen</button>
           <button className="btn btn-sm" onClick={fetchOutreach}>✉ Draft Outreach</button>
           <button className="btn btn-sm" onClick={() => setShowResume(s=>!s)}>📄 {showResume?"Hide":"Show"} Resume</button>
+          <button
+            className="btn btn-sm"
+            onClick={runAiScore}
+            disabled={loadingScore}
+            style={{ background: loadingScore ? "var(--bg2)" : "var(--blue-bg)", color: "var(--blue-text)", border: "1px solid var(--blue-text)", opacity: loadingScore ? 0.7 : 1 }}
+          >
+            {loadingScore ? "⟳ Scoring…" : "✦ Score with AI"}
+          </button>
           <button className="btn btn-danger btn-sm" style={{ marginLeft: "auto" }} onClick={() => onAction(c.id, "rejected")}>✕ Reject</button>
         </div>
+        {scoreError && (
+          <div style={{ marginTop: 10, fontSize: 12, color: "var(--red-text)", background: "var(--red-bg)", padding: "6px 10px", borderRadius: 6 }}>
+            {scoreError}
+          </div>
+        )}
       </div>
 
       {/* Score breakdown */}
       <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 14 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text2)", marginBottom: 14 }}>Score Breakdown</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text2)" }}>Score Breakdown</div>
+          {aiScored && <span style={{ fontSize: 10, color: "#15803d", fontWeight: 500 }}>✦ updated by AI</span>}
+        </div>
         {(["gca","rrk","leadership","googleyness"] as const).map(k => (
           <div key={k} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <div style={{ width: 180, fontSize: 13, color: "var(--text1)", flexShrink: 0 }}>{ATTR_LABELS[k]}</div>
@@ -85,7 +130,10 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction }
 
       {/* Evidence */}
       <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 14 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text2)", marginBottom: 12 }}>Evidence from Resume</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text2)" }}>Evidence from Resume</div>
+          {aiScored && <span style={{ fontSize: 10, color: "#15803d", fontWeight: 500 }}>✦ AI-extracted</span>}
+        </div>
         {c.evidence.map((e, i) => (
           <div key={i} style={{ background: "var(--bg2)", borderRadius: 8, padding: "10px 12px 10px 20px", marginBottom: 8, fontSize: 13, lineHeight: 1.5, position: "relative" }}>
             <div style={{ position: "absolute", left: 8, top: 18, width: 4, height: 4, borderRadius: "50%", background: "#2563eb" }} />

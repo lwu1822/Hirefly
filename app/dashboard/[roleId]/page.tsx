@@ -33,6 +33,8 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
   const [search, setSearch] = useState("");
   const [reranking, setReranking] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  const [batchScoring, setBatchScoring] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
 
   useEffect(() => {
     fetch(`/api/roles`).then(r => r.json()).then(d => {
@@ -71,6 +73,42 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
     });
     setCandidates(prev => prev.filter(c => c.id !== candidateId));
     setSelected(null); setShowDetail(false);
+  }
+
+  function handleScored(
+    candidateId: string,
+    scores: { gca: number; rrk: number; leadership: number; googleyness: number; evidence: string[] }
+  ) {
+    setCandidates(prev => {
+      const updated = prev.map(c => {
+        if (c.id !== candidateId) return c;
+        const next = { ...c, ...scores };
+        const total = rubric.gca + rubric.rrk + rubric.leadership + rubric.googleyness;
+        next.overall = total === 0 ? 0 : (
+          next.gca * rubric.gca + next.rrk * rubric.rrk +
+          next.leadership * rubric.leadership + next.googleyness * rubric.googleyness
+        ) / total;
+        return next;
+      });
+      return [...updated].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
+    });
+  }
+
+  async function handleScoreAll() {
+    setBatchScoring(true);
+    setBatchProgress({ done: 0, total: candidates.length });
+    for (const cand of candidates) {
+      try {
+        const res = await fetch("/api/candidates/ai-score", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ candidateId: cand.id, roleId }),
+        });
+        const d = await res.json();
+        if (!d.error) handleScored(cand.id, d);
+      } catch { /* skip failed */ }
+      setBatchProgress(p => ({ ...p, done: p.done + 1 }));
+    }
+    setBatchScoring(false);
   }
 
   const filtered = candidates.filter(c =>
@@ -140,7 +178,7 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
           {/* Detail panel */}
           <div style={{ flex: 1, overflowY: "auto", background: "var(--bg)" }}>
             {selectedCand && showDetail
-              ? <CandidateDetail candidate={selectedCand} roleId={roleId} rank={filtered.findIndex(c=>c.id===selectedCand.id)+1} onAction={handleAction} />
+              ? <CandidateDetail candidate={selectedCand} roleId={roleId} rank={filtered.findIndex(c=>c.id===selectedCand.id)+1} onAction={handleAction} onScored={handleScored} />
               : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text3)", fontSize: 14 }}>Select a candidate to view details</div>
             }
           </div>
@@ -168,6 +206,16 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
                 ⟳ Re-ranking candidates…
               </div>
             )}
+            <button
+              className="btn btn-sm"
+              onClick={handleScoreAll}
+              disabled={batchScoring}
+              style={{ width: "100%", justifyContent: "center", marginTop: 8, background: "var(--blue-bg)", color: "var(--blue-text)", border: "1px solid var(--blue-text)", opacity: batchScoring ? 0.7 : 1 }}
+            >
+              {batchScoring
+                ? `⟳ Scoring ${batchProgress.done}/${batchProgress.total}…`
+                : "✦ Score All with AI"}
+            </button>
             <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Criteria</div>
               {[
