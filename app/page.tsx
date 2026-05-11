@@ -10,7 +10,7 @@ export default function LandingPage() {
       <nav style={{ height: 56, borderBottom: "1px solid var(--border)", background: "var(--bg3)", display: "flex", alignItems: "center", padding: "0 32px", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 16 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#2563eb" }} />
-          HireIQ
+          Hirefly
         </div>
         <div style={{ flex: 1 }} />
         <Link href="/dashboard" style={{ textDecoration: "none" }}>
@@ -27,7 +27,7 @@ export default function LandingPage() {
           An intelligence layer on top of your ATS — not a replacement
         </h1>
         <p style={{ fontSize: 18, color: "var(--text2)", maxWidth: 520, lineHeight: 1.6, marginBottom: 36 }}>
-          HireIQ ranks candidates using structured rubrics, surfaces evidence from every resume, and re-ranks in real time as your criteria evolve. Works alongside Greenhouse, Lever, and Ashby.
+          Hirefly ranks candidates using structured rubrics, surfaces evidence from every resume, and re-ranks in real time as your criteria evolve. Works alongside Greenhouse, Lever, and Ashby.
         </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
           <Link href="/dashboard" style={{ textDecoration: "none" }}>
@@ -66,7 +66,7 @@ export default function LandingPage() {
       </div>
 
       <footer style={{ padding: "20px 32px", borderTop: "1px solid var(--border)", textAlign: "center", fontSize: 12, color: "var(--text3)" }}>
-        HireIQ · Built for Google Recruiting Hackathon 2025
+        Hirefly · Built for Google Recruiting Hackathon 2025
       </footer>
     </main>
   );

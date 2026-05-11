@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import type { Candidate } from "@/lib/data";
+import type { Candidate, RoleLabels, CustomCategory } from "@/lib/data";
+import { DEFAULT_LABELS } from "@/lib/data";
 
 const ATTR_LABELS: Record<string, string> = { gca: "General Cognitive Ability", rrk: "Role-Related Knowledge", leadership: "Leadership", googleyness: "Googleyness" };
 const ATTR_COLORS: Record<string, string> = { gca: "#2563eb", rrk: "#16a34a", leadership: "#d97706", googleyness: "#7c3aed" };
@@ -20,10 +21,13 @@ interface Props {
   roleId: string;
   rank: number;
   onAction: (id: string, action: "advanced" | "rejected") => void;
-  onScored?: (id: string, scores: { gca: number; rrk: number; leadership: number; googleyness: number; evidence: string[] }) => void;
+  onScored?: (id: string, scores: { gca: number; rrk: number; leadership: number; googleyness: number; evidence: string[]; customScores?: Record<string, number> }) => void;
+  labels?: RoleLabels;
+  customCategories?: CustomCategory[];
 }
 
-export default function CandidateDetail({ candidate: c, roleId, rank, onAction, onScored }: Props) {
+export default function CandidateDetail({ candidate: c, roleId, rank, onAction, onScored, labels: labelsProp, customCategories = [] }: Props) {
+  const labels = { ...DEFAULT_LABELS, ...labelsProp };
   const [expandedAttr, setExpandedAttr] = useState<string | null>(null);
   const [outreach, setOutreach] = useState<{personalized:string,generic:string}|null>(null);
   const [loadingOutreach, setLoadingOutreach] = useState(false);
@@ -33,6 +37,9 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
   const [tone, setTone] = useState("warm");
   const [notes, setNotes] = useState("");
   const [showResume, setShowResume] = useState(false);
+  const [similarRoles, setSimilarRoles] = useState<{roleId: string; title: string; team: string; level: string; score: number}[]>([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [addedToRole, setAddedToRole] = useState<Set<string>>(new Set());
 
   const idx = Math.abs(c.id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0));
   const [bg, fg] = AVATAR_COLORS[idx % 10].split(" ");
@@ -50,6 +57,24 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
     setLoadingOutreach(false);
   }
 
+  async function fetchSimilarRoles() {
+    setLoadingSimilar(true);
+    try {
+      const res = await fetch(`/api/candidates/similar-roles?candidateId=${c.id}&roleId=${roleId}`);
+      const d = await res.json();
+      setSimilarRoles(d.matches || []);
+    } catch { /* ignore */ }
+    setLoadingSimilar(false);
+  }
+
+  async function addToRole(targetRoleId: string) {
+    await fetch("/api/candidates/add-to-role", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ candidateId: c.id, roleId: targetRoleId }),
+    });
+    setAddedToRole(prev => new Set([...prev, targetRoleId]));
+  }
+
   async function runAiScore() {
     setLoadingScore(true);
     setScoreError("");
@@ -61,7 +86,7 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
       const d = await res.json();
       if (d.error) throw new Error(d.error);
       setAiScored(true);
-      onScored?.(c.id, { gca: d.gca, rrk: d.rrk, leadership: d.leadership, googleyness: d.googleyness, evidence: d.evidence });
+      onScored?.(c.id, { gca: d.gca, rrk: d.rrk, leadership: d.leadership, googleyness: d.googleyness, evidence: d.evidence, customScores: d.customScores });
     } catch (e) {
       setScoreError(String(e));
     }
@@ -134,7 +159,7 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
                   style={{ width: 180, fontSize: 13, color: "var(--text1)", flexShrink: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, userSelect: "none" }}
                 >
                   <span style={{ color: ATTR_COLORS[k], fontSize: 10 }}>{open ? "▼" : "▶"}</span>
-                  {ATTR_LABELS[k]}
+                  {labels[k]}
                 </div>
                 <div style={{ flex: 1, height: 6, background: "var(--bg2)", borderRadius: 3, overflow: "hidden" }}>
                   <div style={{ width: `${pct(c[k])}%`, height: "100%", background: ATTR_COLORS[k], borderRadius: 3, transition: "width 0.4s" }} />
@@ -149,6 +174,51 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
             </div>
           );
         })}
+
+        {/* Custom categories */}
+        {customCategories.length > 0 && (
+          <div style={{ marginTop: 8, paddingTop: 10, borderTop: "1px dashed var(--border)" }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Custom</div>
+            {customCategories.map(cat => {
+              const score = c.customScores?.[cat.key];
+              const open = expandedAttr === cat.key;
+              const unscored = score === undefined;
+              return (
+                <div key={cat.key} style={{ marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div
+                      onClick={() => setExpandedAttr(open ? null : cat.key)}
+                      style={{ width: 180, fontSize: 13, color: unscored ? "var(--text3)" : "var(--text1)", flexShrink: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, userSelect: "none" }}
+                    >
+                      <span style={{ color: "#7c3aed", fontSize: 10 }}>{open ? "▼" : "▶"}</span>
+                      {cat.label}
+                    </div>
+                    <div style={{ flex: 1, height: 6, background: "var(--bg2)", borderRadius: 3, overflow: "hidden" }}>
+                      {unscored
+                        ? <div style={{ width: "100%", height: "100%", background: "repeating-linear-gradient(90deg, var(--border) 0px, var(--border) 4px, transparent 4px, transparent 8px)", borderRadius: 3 }} />
+                        : <div style={{ width: `${pct(score)}%`, height: "100%", background: "#7c3aed", borderRadius: 3, transition: "width 0.4s" }} />
+                      }
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, width: 34, textAlign: "right", color: unscored ? "var(--text3)" : "#7c3aed" }}>
+                      {unscored ? "—" : pct(score)}
+                    </div>
+                  </div>
+                  {open && (
+                    <div style={{ marginTop: 6, marginLeft: 16, padding: "8px 12px", background: "var(--bg2)", borderRadius: 6, borderLeft: "3px solid #7c3aed", fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>
+                      {unscored && <div style={{ color: "var(--text3)", marginBottom: 6, fontStyle: "italic" }}>Not yet scored — click "Score with AI" to evaluate.</div>}
+                      {cat.criteria}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {customCategories.some(cat => c.customScores?.[cat.key] === undefined) && !aiScored && (
+              <div style={{ fontSize: 11, color: "#7c3aed", background: "#fdf4ff", border: "1px solid #e9d5ff", padding: "6px 10px", borderRadius: 6, marginTop: 4 }}>
+                Custom categories need scoring — click "Score with AI" above.
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Evidence */}
@@ -163,6 +233,41 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
             {e}
           </div>
         ))}
+      </div>
+
+      {/* Similar Roles */}
+      <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text2)" }}>Similar Roles</div>
+          <button className="btn btn-sm" onClick={fetchSimilarRoles} disabled={loadingSimilar}>
+            {loadingSimilar ? "Finding…" : similarRoles.length > 0 ? "Refresh" : "Find Matches →"}
+          </button>
+        </div>
+        {similarRoles.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {similarRoles.map(r => (
+              <div key={r.roleId} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "var(--bg2)", borderRadius: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text1)" }}>{r.title}</div>
+                  <div style={{ fontSize: 11, color: "var(--text3)" }}>{r.team} · {r.level}</div>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--blue-text)", minWidth: 38, textAlign: "right" }}>{Math.round(r.score * 100)}%</div>
+                <button
+                  className="btn btn-sm"
+                  onClick={() => addToRole(r.roleId)}
+                  disabled={addedToRole.has(r.roleId)}
+                  style={{ fontSize: 11, padding: "3px 10px", background: addedToRole.has(r.roleId) ? "var(--green-bg)" : "var(--blue-bg)", color: addedToRole.has(r.roleId) ? "var(--green-text)" : "var(--blue-text)", border: "1px solid currentColor" }}
+                >
+                  {addedToRole.has(r.roleId) ? "✓ Added" : "+ Add to Pipeline"}
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, color: "var(--text3)" }}>
+            Find other open roles this candidate matches based on their profile scores.
+          </div>
+        )}
       </div>
 
       {/* Resume text */}

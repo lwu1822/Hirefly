@@ -1,4 +1,4 @@
-# HireIQ — AI Recruiting Intelligence
+# Hirefly — AI Recruiting Intelligence
 
 An intelligence layer on top of your ATS. Ranks candidates with AI rubrics, surfaces evidence from resumes, and re-ranks live as you edit criteria.
 

@@ -1,3 +1,10 @@
+export type CustomCategory = {
+  key: string;
+  label: string;
+  weight: number;
+  criteria: string;
+};
+
 export type Candidate = {
   id: string;
   name: string;
@@ -16,7 +23,57 @@ export type Candidate = {
   resumeText: string;
   status: "pending" | "advanced" | "rejected";
   roleId: string;
+  folder?: string;
+  customScores?: Record<string, number>;
 };
+
+export type RoleCriteria = {
+  gca: string;
+  rrk: string;
+  leadership: string;
+  googleyness: string;
+};
+
+export type RoleLabels = {
+  gca: string;
+  rrk: string;
+  leadership: string;
+  googleyness: string;
+};
+
+export const DEFAULT_LABELS: RoleLabels = {
+  gca: "General Cognitive Ability",
+  rrk: "Role-Related Knowledge",
+  leadership: "Leadership",
+  googleyness: "Googleyness",
+};
+
+export const DEFAULT_CRITERIA: RoleCriteria = {
+  gca: "Problem-solving complexity, academic trajectory, learning agility, ability to operate in novel domains",
+  rrk: "Hands-on depth in required languages and systems, evidence of production ownership",
+  leadership: "Mentoring, cross-team influence, driving projects end-to-end without being told to",
+  googleyness: "Intellectual curiosity, collaboration, community contributions, comfort with ambiguity",
+};
+
+export type Company = {
+  id: string;
+  name: string;
+  color: string;
+};
+
+export const COMPANY_COLORS = [
+  "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)",
+  "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)",
+  "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+  "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+  "linear-gradient(135deg, #d97706 0%, #92400e 100%)",
+  "linear-gradient(135deg, #059669 0%, #065f46 100%)",
+];
+
+export const COMPANIES: Company[] = [
+  { id: "co1", name: "Google", color: COMPANY_COLORS[0] },
+  { id: "co2", name: "Meta", color: COMPANY_COLORS[2] },
+];
 
 export type Role = {
   id: string;
@@ -26,6 +83,11 @@ export type Role = {
   daysOpen: number;
   description: string;
   rubric: RubricWeights;
+  criteria?: RoleCriteria;
+  labels?: RoleLabels;
+  status?: "open" | "closed";
+  companyId?: string;
+  customCategories?: CustomCategory[];
 };
 
 export type RubricWeights = {
@@ -44,6 +106,7 @@ export const ROLES: Role[] = [
     daysOpen: 12,
     description: "Backend engineer for payments infra. Needs distributed systems expertise, ideally has owned a service end-to-end in production.",
     rubric: { gca: 25, rrk: 35, leadership: 20, googleyness: 20 },
+    companyId: "co1",
   },
   {
     id: "r2",
@@ -53,6 +116,7 @@ export const ROLES: Role[] = [
     daysOpen: 5,
     description: "Staff engineer to lead ML infrastructure. Strong systems background, experience with training pipelines at scale.",
     rubric: { gca: 30, rrk: 30, leadership: 25, googleyness: 15 },
+    companyId: "co1",
   },
   {
     id: "r3",
@@ -62,6 +126,7 @@ export const ROLES: Role[] = [
     daysOpen: 21,
     description: "SWE for search ranking and ads systems. Strong CS fundamentals, experience with large-scale data processing.",
     rubric: { gca: 30, rrk: 35, leadership: 15, googleyness: 20 },
+    companyId: "co2",
   },
 ];
 

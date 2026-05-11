@@ -1,23 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { groqJSON } from "@/lib/llm/groq";
 import { getCandidateById, getRoleById, updateCandidateScores } from "@/lib/store";
+import { DEFAULT_CRITERIA, type CustomCategory } from "@/lib/data";
 
-const SYSTEM = `You are an expert Google recruiter evaluating candidates. Score this candidate on Google's 4 hiring attributes based ONLY on evidence in their resume. Be calibrated — most candidates are not perfect. Return ONLY valid JSON:
+function buildSystem(criteria: typeof DEFAULT_CRITERIA, customCats: CustomCategory[]) {
+  const customFields = customCats.length
+    ? `,\n  "customScores": {\n${customCats.map(c => `    "${c.key}": <0.0-1.0>`).join(",\n")}\n  }`
+    : "";
+
+  const customCriteria = customCats.length
+    ? `\n\nCustom scoring criteria for this role:\n${customCats.map(c => `- ${c.key} (${c.label}): ${c.criteria}`).join("\n")}`
+    : "";
+
+  return `You are an expert recruiter evaluating candidates. Score this candidate based ONLY on evidence in their resume. Be calibrated — most candidates are not perfect. Return ONLY valid JSON:
 {
   "gca": <0.0-1.0>,
   "rrk": <0.0-1.0>,
   "leadership": <0.0-1.0>,
-  "googleyness": <0.0-1.0>,
-  "evidence": ["specific achievement or quote 1", "specific achievement or quote 2", "specific achievement or quote 3", "specific achievement or quote 4"]
+  "googleyness": <0.0-1.0>${customFields},
+  "evidence": ["specific achievement 1", "specific achievement 2", "specific achievement 3", "specific achievement 4"]
 }
 
-Scoring rubric:
-- gca (General Cognitive Ability): problem-solving complexity, academic pedigree, systems thinking, learning agility shown in career trajectory
-- rrk (Role-Related Knowledge): technical skills and domain expertise directly relevant to the role requirements
-- leadership: driving impact, influencing without authority, mentoring, owning projects end-to-end, cross-team collaboration
-- googleyness: intellectual curiosity, collaborative mindset, ethical compass, community contribution, comfort with ambiguity
+Scoring criteria:
+- gca (General Cognitive Ability): ${criteria.gca}
+- rrk (Role-Related Knowledge): ${criteria.rrk}
+- leadership: ${criteria.leadership}
+- googleyness: ${criteria.googleyness}${customCriteria}
 
 Evidence must be verbatim or closely paraphrased from the resume. Do not invent facts.`;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,30 +43,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const userMessage = `Role: ${role.title} — ${role.description}
+    const criteria = { ...DEFAULT_CRITERIA, ...role.criteria };
+    const customCats = role.customCategories ?? [];
 
-Resume:
-${candidate.resumeText}`;
-
-    const scores = await groqJSON<{
-      gca: number;
-      rrk: number;
-      leadership: number;
-      googleyness: number;
+    const raw = await groqJSON<{
+      gca: number; rrk: number; leadership: number; googleyness: number;
       evidence: string[];
-    }>(SYSTEM, userMessage);
+      customScores?: Record<string, number>;
+    }>(buildSystem(criteria, customCats), `Role: ${role.title} — ${role.description}\n\nResume:\n${candidate.resumeText}`);
 
-    // Clamp all scores to [0, 1]
+    const clamp = (n: number) => Math.min(1, Math.max(0, Number(n) || 0));
+    const customScores: Record<string, number> = {};
+    if (customCats.length && raw.customScores) {
+      for (const cat of customCats) {
+        customScores[cat.key] = clamp(raw.customScores[cat.key] ?? 0);
+      }
+    }
+
     const clamped = {
-      gca: Math.min(1, Math.max(0, scores.gca)),
-      rrk: Math.min(1, Math.max(0, scores.rrk)),
-      leadership: Math.min(1, Math.max(0, scores.leadership)),
-      googleyness: Math.min(1, Math.max(0, scores.googleyness)),
-      evidence: Array.isArray(scores.evidence) ? scores.evidence : [],
+      gca: clamp(raw.gca),
+      rrk: clamp(raw.rrk),
+      leadership: clamp(raw.leadership),
+      googleyness: clamp(raw.googleyness),
+      evidence: Array.isArray(raw.evidence) ? raw.evidence : [],
+      customScores: customCats.length ? customScores : undefined,
     };
 
     updateCandidateScores(candidateId, clamped);
-
     return NextResponse.json({ ...clamped, candidateId });
   } catch (err) {
     console.error("AI scoring error:", err);

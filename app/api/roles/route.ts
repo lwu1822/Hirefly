@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
         leadership: body.rubric?.leadership ?? 20,
         googleyness: body.rubric?.googleyness ?? 20,
       },
+      companyId: body.companyId ?? undefined,
     };
     addRole(role);
     return NextResponse.json({ role });

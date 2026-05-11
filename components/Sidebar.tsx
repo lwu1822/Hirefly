@@ -1,58 +1,90 @@
 "use client";
 import Link from "next/link";
+import { Briefcase, PlusCircle, Upload, Settings } from "lucide-react";
+
+const NAV = [
+  { key: "roles",  Icon: Briefcase,   href: "/dashboard",        label: "Open Roles" },
+  { key: "new",    Icon: PlusCircle,  href: "/dashboard/new",    label: "Create Role" },
+  { key: "import", Icon: Upload,      href: "/dashboard/import", label: "Import Resumes" },
+];
+
+function NavBtn({ isActive, children, onClick }: { isActive?: boolean; children: React.ReactNode; onClick?: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: isActive ? "rgba(74,222,128,0.15)" : "transparent",
+        color: isActive ? "#4ade80" : "rgba(255,255,255,0.38)",
+        cursor: "pointer", transition: "background 0.15s, color 0.15s",
+        outline: isActive ? "1px solid rgba(74,222,128,0.3)" : "none",
+      }}
+      onMouseEnter={e => {
+        if (!isActive) {
+          (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.13)";
+          (e.currentTarget as HTMLDivElement).style.color = "rgba(255,255,255,0.9)";
+        }
+      }}
+      onMouseLeave={e => {
+        if (!isActive) {
+          (e.currentTarget as HTMLDivElement).style.background = "transparent";
+          (e.currentTarget as HTMLDivElement).style.color = "rgba(255,255,255,0.38)";
+        }
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function Sidebar({ active }: { active: string }) {
-  const items = [
-    { key: "roles", label: "Open Roles", icon: "💼", href: "/dashboard" },
-    { key: "new", label: "Create Role", icon: "+", href: "/dashboard/new" },
-  ];
   return (
-    <div className="sidebar">
-      <div style={{ padding: "14px 16px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 16 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#2563eb" }} />
-        HireIQ
-      </div>
-      <div style={{ padding: "10px 8px", flex: 1 }}>
-        <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text3)", padding: "4px 8px 6px" }}>Workspace</div>
-        {items.map(item => (
-          <Link key={item.key} href={item.href} style={{ textDecoration: "none" }}>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
-              borderRadius: 6, marginBottom: 2, fontSize: 13, cursor: "pointer",
-              background: active === item.key ? "var(--blue-bg)" : "transparent",
-              color: active === item.key ? "var(--blue-text)" : "var(--text2)",
-              fontWeight: active === item.key ? 600 : 400,
-            }}>
-              <span>{item.icon}</span>{item.label}
-            </div>
-          </Link>
-        ))}
-        <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text3)", padding: "12px 8px 6px" }}>Settings</div>
-        <Link href="/dashboard/import" style={{ textDecoration: "none" }}>
+    <aside
+      className="sidebar"
+      style={{ justifyContent: "space-between", paddingTop: 20, paddingBottom: 20 }}
+    >
+      {/* Top — logo */}
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <Link href="/dashboard" style={{ textDecoration: "none" }}>
           <div style={{
-            display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
-            borderRadius: 6, marginBottom: 2, fontSize: 13, cursor: "pointer",
-            background: active === "import" ? "var(--blue-bg)" : "transparent",
-            color: active === "import" ? "var(--blue-text)" : "var(--text2)",
-            fontWeight: active === "import" ? 600 : 400,
+            width: 44, height: 44, borderRadius: 13,
+            background: "linear-gradient(135deg, #1a3d32 0%, #0d9488 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 2px 10px rgba(13,148,136,0.45)",
           }}>
-            <span>↑</span>Import Resumes
+            <div style={{ width: 16, height: 16, position: "relative" }}>
+              <div style={{ position: "absolute", width: 9, height: 9, borderRadius: "50%", background: "#4ade80", top: 0, left: 0 }} />
+              <div style={{ position: "absolute", width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.5)", bottom: 0, right: 0 }} />
+            </div>
           </div>
         </Link>
-        <div key="preferences" style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 6, marginBottom: 2, fontSize: 13, cursor: "pointer", color: "var(--text2)" }}
-          onClick={() => alert("Preferences — coming soon")}>
-          <span>⚙</span>Preferences
+      </div>
+
+      {/* Middle — nav items evenly spaced */}
+      <nav style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-evenly", flex: 1, padding: "24px 0" }}>
+        {NAV.map(({ key, Icon, href, label }) => (
+          <Link key={key} href={href} title={label} style={{ textDecoration: "none" }}>
+            <NavBtn isActive={active === key}>
+              <Icon size={26} strokeWidth={active === key ? 2.2 : 1.8} />
+            </NavBtn>
+          </Link>
+        ))}
+      </nav>
+
+      {/* Bottom — settings + avatar */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+        <NavBtn onClick={() => alert("Preferences — coming soon")}>
+          <Settings size={26} strokeWidth={1.8} />
+        </NavBtn>
+
+        <div
+          title="Jamie Liu — recruiter@demo.com"
+          style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, #0d9488, #4ade80)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#0f2922", cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }}
+        >
+          JL
         </div>
       </div>
-      <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--blue-bg)", color: "var(--blue-text)", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center" }}>JL</div>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600 }}>Jamie Liu</div>
-            <div style={{ fontSize: 11, color: "var(--text3)" }}>recruiter@demo.com</div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </aside>
   );
 }

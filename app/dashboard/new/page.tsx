@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import type { Company } from "@/lib/data";
 
 type RubricOutput = {
   title: string;
@@ -10,13 +11,25 @@ type RubricOutput = {
   rubric: Record<string, { weight: number; criteria: { name: string; signal: string; required: boolean }[] }>;
 };
 
-export default function NewRolePage() {
+function NewRoleForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedCompanyId = searchParams.get("companyId") ?? "";
+
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [companyId, setCompanyId] = useState(preselectedCompanyId);
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [rubric, setRubric] = useState<RubricOutput | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/companies").then(r => r.json()).then(d => {
+      setCompanies(d.companies);
+      if (!companyId && d.companies.length > 0) setCompanyId(d.companies[0].id);
+    });
+  }, []);
 
   async function publish() {
     if (!rubric) return;
@@ -29,6 +42,7 @@ export default function NewRolePage() {
           team: rubric.team,
           level: rubric.level,
           description,
+          companyId: companyId || undefined,
           rubric: {
             gca: rubric.rubric.gca?.weight ?? 25,
             rrk: rubric.rubric.rrk?.weight ?? 35,
@@ -61,6 +75,7 @@ export default function NewRolePage() {
     setLoading(false);
   }
 
+  const selectedCompany = companies.find(c => c.id === companyId);
   const ATTR_LABELS: Record<string, string> = { gca: "General Cognitive Ability", rrk: "Role-Related Knowledge", leadership: "Leadership", googleyness: "Googleyness" };
   const ATTR_COLORS: Record<string, string> = { gca: "#2563eb", rrk: "#16a34a", leadership: "#d97706", googleyness: "#7c3aed" };
 
@@ -75,7 +90,44 @@ export default function NewRolePage() {
         <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
           <div style={{ maxWidth: 640, margin: "0 auto" }}>
             <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>Describe the role</div>
-            <div style={{ fontSize: 14, color: "var(--text2)", marginBottom: 20 }}>Write in plain language — HireIQ will generate a structured rubric using Google's 4 hiring attributes.</div>
+            <div style={{ fontSize: 14, color: "var(--text2)", marginBottom: 20 }}>Write in plain language — Hirefly will generate a structured rubric using Google's 4 hiring attributes.</div>
+
+            {/* Company selector */}
+            <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Company</div>
+              {companies.length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--text3)" }}>
+                  No companies yet —{" "}
+                  <span style={{ color: "var(--blue-text)", cursor: "pointer", textDecoration: "underline" }} onClick={() => router.push("/dashboard")}>
+                    create one on the dashboard first
+                  </span>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {companies.map(c => (
+                    <div
+                      key={c.id}
+                      onClick={() => setCompanyId(c.id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 8, padding: "7px 14px", borderRadius: 10, cursor: "pointer",
+                        border: companyId === c.id ? "2px solid transparent" : "2px solid var(--border)",
+                        background: companyId === c.id ? "var(--bg2)" : "transparent",
+                        outline: companyId === c.id ? `2px solid ${c.color.match(/#[a-f0-9]+/i)?.[0] ?? "#0d9488"}` : "none",
+                        outlineOffset: 2, transition: "all 0.1s",
+                      }}
+                    >
+                      <div style={{ width: 12, height: 12, borderRadius: "50%", background: c.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontWeight: companyId === c.id ? 700 : 500 }}>{c.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedCompany && (
+                <div style={{ marginTop: 10, fontSize: 12, color: "var(--text3)" }}>
+                  This role will be added to <strong style={{ color: "var(--text1)" }}>{selectedCompany.name}</strong>
+                </div>
+              )}
+            </div>
 
             <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Role description</div>
@@ -103,7 +155,7 @@ export default function NewRolePage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                   <div>
                     <div style={{ fontSize: 18, fontWeight: 700 }}>{rubric.title}</div>
-                    <div style={{ fontSize: 13, color: "var(--text2)" }}>{rubric.team} · {rubric.level}</div>
+                    <div style={{ fontSize: 13, color: "var(--text2)" }}>{rubric.team} · {rubric.level}{selectedCompany ? ` · ${selectedCompany.name}` : ""}</div>
                   </div>
                   <button className="btn btn-primary btn-sm" onClick={publish} disabled={publishing}>
                     {publishing ? "Publishing…" : "Publish Role ✓"}
@@ -134,5 +186,13 @@ export default function NewRolePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NewRolePage() {
+  return (
+    <Suspense>
+      <NewRoleForm />
+    </Suspense>
   );
 }
