@@ -13,8 +13,8 @@ export default function LandingPage() {
           Hirefly
         </div>
         <div style={{ flex: 1 }} />
-        <Link href="/dashboard" style={{ textDecoration: "none" }}>
-          <button className="btn btn-primary btn-sm">Try the demo →</button>
+        <Link href="/login" style={{ textDecoration: "none" }}>
+          <button className="btn btn-primary btn-sm">Get started →</button>
         </Link>
       </nav>
 
@@ -30,23 +30,23 @@ export default function LandingPage() {
           Hirefly ranks candidates using structured rubrics, surfaces evidence from every resume, and re-ranks in real time as your criteria evolve. Works alongside Greenhouse, Lever, and Ashby.
         </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-          <Link href="/dashboard" style={{ textDecoration: "none" }}>
+          <Link href="/login" style={{ textDecoration: "none" }}>
             <button
               className="btn btn-primary"
               style={{ fontSize: 16, padding: "12px 28px", borderRadius: 8 }}
               onMouseEnter={() => setHovered(true)}
               onMouseLeave={() => setHovered(false)}
             >
-              Try the demo {hovered ? "↗" : "→"}
+              Get started {hovered ? "↗" : "→"}
             </button>
           </Link>
-          <Link href="/dashboard" style={{ textDecoration: "none" }}>
+          <Link href="/login" style={{ textDecoration: "none" }}>
             <button className="btn" style={{ fontSize: 16, padding: "12px 28px", borderRadius: 8 }}>
-              View live dashboard
+              Sign in
             </button>
           </Link>
         </div>
-        <p style={{ marginTop: 16, fontSize: 13, color: "var(--text3)" }}>No login required · 10 pre-ranked candidates loaded</p>
+        <p style={{ marginTop: 16, fontSize: 13, color: "var(--text3)" }}>Free to try · Skip login to view demo</p>
 
         {/* Feature grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, maxWidth: 800, width: "100%", marginTop: 64 }}>
