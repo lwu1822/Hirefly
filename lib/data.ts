@@ -25,6 +25,7 @@ export type Candidate = {
   roleId: string;
   folder?: string;
   customScores?: Record<string, number>;
+  rationale?: Record<string, string>;
 };
 
 export type RoleCriteria = {

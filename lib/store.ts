@@ -102,7 +102,7 @@ export function getFoldersForRole(roleId: string): string[] {
 
 export function updateCandidateScores(
   id: string,
-  scores: { gca: number; rrk: number; leadership: number; googleyness: number; evidence: string[]; customScores?: Record<string, number> }
+  scores: { gca: number; rrk: number; leadership: number; googleyness: number; evidence: string[]; customScores?: Record<string, number>; rationale?: Record<string, string> }
 ) {
   const c = candidates.find(c => c.id === id);
   if (c) {
@@ -112,6 +112,7 @@ export function updateCandidateScores(
     c.googleyness = scores.googleyness;
     c.evidence = scores.evidence;
     if (scores.customScores) c.customScores = { ...c.customScores, ...scores.customScores };
+    if (scores.rationale) c.rationale = scores.rationale;
   }
 }
 

@@ -8,7 +8,9 @@ type RubricOutput = {
   title: string;
   team: string;
   level: string;
+  weightRationale?: string;
   rubric: Record<string, { weight: number; criteria: { name: string; signal: string; required: boolean }[] }>;
+  customCategories?: { key: string; label: string; weight: number; criteria: string }[];
 };
 
 function NewRoleForm() {
@@ -49,6 +51,7 @@ function NewRoleForm() {
             leadership: rubric.rubric.leadership?.weight ?? 20,
             googleyness: rubric.rubric.googleyness?.weight ?? 20,
           },
+          customCategories: rubric.customCategories ?? [],
         }),
       });
       router.push("/dashboard");
@@ -152,7 +155,7 @@ function NewRoleForm() {
 
             {rubric && !loading && (
               <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: 20 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                   <div>
                     <div style={{ fontSize: 18, fontWeight: 700 }}>{rubric.title}</div>
                     <div style={{ fontSize: 13, color: "var(--text2)" }}>{rubric.team} · {rubric.level}{selectedCompany ? ` · ${selectedCompany.name}` : ""}</div>
@@ -161,25 +164,66 @@ function NewRoleForm() {
                     {publishing ? "Publishing…" : "Publish Role ✓"}
                   </button>
                 </div>
+
+                {/* Weight rationale banner */}
+                {rubric.weightRationale && (
+                  <div style={{ marginBottom: 16, padding: "10px 14px", background: "var(--blue-bg)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, color: "var(--text1)", lineHeight: 1.6 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--blue-text)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 3 }}>Why these weights?</span>
+                    {rubric.weightRationale}
+                  </div>
+                )}
+
+                {/* Base 4 rubric categories */}
                 {Object.entries(rubric.rubric).map(([key, attr]) => (
-                  <div key={key} style={{ marginBottom: 16, padding: 14, background: "var(--bg2)", borderRadius: 8, borderLeft: `3px solid ${ATTR_COLORS[key] ?? "#888"}` }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div key={key} style={{ marginBottom: 12, padding: 14, background: "var(--bg2)", borderRadius: 8, borderLeft: `3px solid ${ATTR_COLORS[key] ?? "#888"}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <div style={{ fontWeight: 600, fontSize: 13 }}>{ATTR_LABELS[key] ?? key}</div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: ATTR_COLORS[key] ?? "#888" }}>{attr.weight}%</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 80, height: 5, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
+                          <div style={{ width: `${attr.weight}%`, height: "100%", background: ATTR_COLORS[key] ?? "#888", borderRadius: 3 }} />
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: ATTR_COLORS[key] ?? "#888", minWidth: 30 }}>{attr.weight}%</span>
+                      </div>
                     </div>
                     {attr.criteria.map((c, i) => (
-                      <div key={i} style={{ marginBottom: 4, fontSize: 12, display: "flex", gap: 6, alignItems: "flex-start" }}>
+                      <div key={i} style={{ marginBottom: 5, fontSize: 12, display: "flex", gap: 6, alignItems: "flex-start" }}>
                         <span style={{ marginTop: 2, flexShrink: 0, fontSize: 10, padding: "1px 5px", borderRadius: 4, background: c.required ? "#dbeafe" : "var(--bg)", color: c.required ? "#1d4ed8" : "var(--text3)", border: "1px solid", borderColor: c.required ? "#93c5fd" : "var(--border)" }}>
                           {c.required ? "required" : "nice-to-have"}
                         </span>
                         <div>
-                          <span style={{ fontWeight: 500 }}>{c.name}</span>
-                          <span style={{ color: "var(--text3)", marginLeft: 4 }}>— {c.signal}</span>
+                          <span style={{ fontWeight: 600 }}>{c.name}</span>
+                          <span style={{ color: "var(--text2)", marginLeft: 4 }}>— {c.signal}</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 ))}
+
+                {/* AI-suggested custom categories */}
+                {rubric.customCategories && rubric.customCategories.length > 0 && (
+                  <div style={{ marginTop: 4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+                      ✦ Role-Specific Categories (AI suggested)
+                    </div>
+                    {rubric.customCategories.map(cat => (
+                      <div key={cat.key} style={{ marginBottom: 12, padding: 14, background: "#fdf4ff", borderRadius: 8, borderLeft: "3px solid #7c3aed", border: "1px solid #e9d5ff" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: "#6d28d9" }}>{cat.label}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ width: 80, height: 5, background: "#e9d5ff", borderRadius: 3, overflow: "hidden" }}>
+                              <div style={{ width: `${cat.weight}%`, height: "100%", background: "#7c3aed", borderRadius: 3 }} />
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#7c3aed", minWidth: 30 }}>{cat.weight}%</span>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 12, color: "#4c1d95", lineHeight: 1.5 }}>{cat.criteria}</div>
+                      </div>
+                    ))}
+                    <div style={{ fontSize: 11, color: "var(--text3)", marginTop: -4, marginBottom: 8 }}>
+                      These will be added as extra scoring dimensions. You can edit them after publishing.
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -442,7 +442,7 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
           {/* Detail panel */}
           <div style={{ flex: 1, overflowY: "auto", background: "var(--bg)" }}>
             {selectedCand && showDetail
-              ? <CandidateDetail candidate={selectedCand} roleId={roleId} rank={filtered.findIndex(c=>c.id===selectedCand.id)+1} onAction={handleAction} onScored={handleScored} labels={labels} customCategories={customCategories} />
+              ? <CandidateDetail candidate={selectedCand} roleId={roleId} rank={filtered.findIndex(c=>c.id===selectedCand.id)+1} onAction={handleAction} onScored={handleScored} labels={labels} customCategories={customCategories} rubric={role?.rubric} />
               : <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 12, color: "var(--text3)" }}>
                   <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>👤</div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>Select a candidate</div>
