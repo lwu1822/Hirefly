@@ -4,6 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import type { Company } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 type RubricOutput = {
   title: string;
   team: string;

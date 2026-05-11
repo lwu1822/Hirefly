@@ -6,6 +6,8 @@ import { DEFAULT_CRITERIA, DEFAULT_LABELS } from "@/lib/data";
 import Sidebar from "@/components/Sidebar";
 import CandidateDetail from "@/components/CandidateDetail";
 
+export const dynamic = "force-dynamic";
+
 const ATTR_MINI_COLORS = ["#2563eb","#16a34a","#d97706","#7c3aed"];
 
 // 1-5 importance → rubric % weights (normalizes to sum ≈ 100)

@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import type { Company, Role } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 type ImportResult = {
   filename: string;
   name?: string;

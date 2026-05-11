@@ -6,6 +6,8 @@ import { COMPANY_COLORS } from "@/lib/data";
 import Sidebar from "@/components/Sidebar";
 import { Users, ChevronDown, ChevronRight, RotateCcw, Plus } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 type RoleWithCount = Role & { candidateCount: number };
 
 const LEVEL_COLOR: Record<string, { bg: string; text: string }> = {
