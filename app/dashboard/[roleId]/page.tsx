@@ -132,6 +132,7 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [addingFolder, setAddingFolder] = useState(false);
+  const [limit, setLimit] = useState<number | null>(null);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [addingCat, setAddingCat] = useState(false);
   const [newCatLabel, setNewCatLabel] = useState("");
@@ -320,8 +321,10 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
     );
   });
 
+  const displayed = limit !== null ? filtered.slice(0, limit) : filtered;
+
   // For company grouping
-  const byCompany = filtered.reduce<Record<string, typeof filtered>>((acc, c) => {
+  const byCompany = displayed.reduce<Record<string, typeof filtered>>((acc, c) => {
     const key = c.company || "Unknown";
     if (!acc[key]) acc[key] = [];
     acc[key].push(c);
@@ -344,7 +347,7 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
           </div>
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 12, color: reranking ? "var(--blue-text)" : "var(--text3)", fontWeight: reranking ? 500 : 400 }}>
-            {reranking ? "⟳ Re-ranking…" : `${filtered.length} candidates`}
+            {reranking ? "⟳ Re-ranking…" : limit !== null && displayed.length < filtered.length ? `Top ${displayed.length} of ${filtered.length}` : `${filtered.length} candidates`}
           </span>
           <button
             className="btn btn-sm"
@@ -364,6 +367,18 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
             {/* Search + toolbar */}
             <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search candidates…" style={{ width: "100%", padding: "7px 12px", fontSize: 13, marginBottom: 8 }} />
+              {/* Top-N filter */}
+              <div style={{ display: "flex", gap: 4, marginBottom: 6, background: "var(--bg2)", borderRadius: 8, padding: 3 }}>
+                {([null, 5, 10, 20, 50] as (number | null)[]).map(n => (
+                  <button
+                    key={String(n)}
+                    onClick={() => setLimit(n)}
+                    style={{ flex: 1, fontSize: 11, padding: "3px 0", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: limit === n ? 700 : 400, background: limit === n ? "var(--bg3)" : "transparent", color: limit === n ? "var(--text1)" : "var(--text3)", boxShadow: limit === n ? "var(--shadow-sm)" : "none", transition: "all 0.1s" }}
+                  >
+                    {n === null ? "All" : `Top ${n}`}
+                  </button>
+                ))}
+              </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                 {/* Group by toggle */}
                 <button
@@ -410,10 +425,16 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
                       {cands.map(c => <CandidateRow key={c.id} c={c} rank={filtered.indexOf(c)} selected={selected} setSelected={setSelected} setShowDetail={setShowDetail} folders={folders} assignFolder={assignFolder} AVATAR_COLORS={AVATAR_COLORS} SCORE_STYLES={SCORE_STYLES} scoreClass={scoreClass} pct={pct} />)}
                     </div>
                   ))
-                : filtered.map((c, i) => <CandidateRow key={c.id} c={c} rank={i} selected={selected} setSelected={setSelected} setShowDetail={setShowDetail} folders={folders} assignFolder={assignFolder} AVATAR_COLORS={AVATAR_COLORS} SCORE_STYLES={SCORE_STYLES} scoreClass={scoreClass} pct={pct} />)
+                : displayed.map((c) => <CandidateRow key={c.id} c={c} rank={filtered.indexOf(c)} selected={selected} setSelected={setSelected} setShowDetail={setShowDetail} folders={folders} assignFolder={assignFolder} AVATAR_COLORS={AVATAR_COLORS} SCORE_STYLES={SCORE_STYLES} scoreClass={scoreClass} pct={pct} />)
               }
               {filtered.length === 0 && (
                 <div style={{ padding: 32, textAlign: "center", color: "var(--text3)", fontSize: 13 }}>No candidates match.</div>
+              )}
+              {filtered.length > 0 && displayed.length < filtered.length && (
+                <div style={{ padding: "10px 14px", textAlign: "center", borderTop: "1px solid var(--border)" }}>
+                  <span style={{ fontSize: 11, color: "var(--text3)" }}>Showing {displayed.length} of {filtered.length} · </span>
+                  <span style={{ fontSize: 11, color: "var(--blue-text)", cursor: "pointer", textDecoration: "underline" }} onClick={() => setLimit(null)}>Show all</span>
+                </div>
               )}
             </div>
           </div>

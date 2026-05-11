@@ -83,8 +83,12 @@ export default function DashboardPage() {
       <Sidebar active="roles" />
       <div className="main">
         <div className="topbar">
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em" }}>Recruiting Dashboard</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <img src="/hirefly-logo.svg" alt="Hirefly" style={{ width: 32, height: 32, objectFit: "contain" }} />
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: "-0.02em" }}>Hirefly</div>
+              <div style={{ fontSize: 11, color: "var(--text3)", marginTop: -2 }}>Recruiting Dashboard</div>
+            </div>
           </div>
           <div style={{ flex: 1 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

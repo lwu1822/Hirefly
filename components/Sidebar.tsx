@@ -46,18 +46,12 @@ export default function Sidebar({ active }: { active: string }) {
     >
       {/* Top — logo */}
       <div style={{ display: "flex", justifyContent: "center" }}>
-        <Link href="/dashboard" style={{ textDecoration: "none" }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 13,
-            background: "linear-gradient(135deg, #1a3d32 0%, #0d9488 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 2px 10px rgba(13,148,136,0.45)",
-          }}>
-            <div style={{ width: 16, height: 16, position: "relative" }}>
-              <div style={{ position: "absolute", width: 9, height: 9, borderRadius: "50%", background: "#4ade80", top: 0, left: 0 }} />
-              <div style={{ position: "absolute", width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.5)", bottom: 0, right: 0 }} />
-            </div>
-          </div>
+        <Link href="/dashboard" style={{ textDecoration: "none" }} title="Hirefly">
+          <img
+            src="/hirefly-logo.svg"
+            alt="Hirefly"
+            style={{ width: 44, height: 44, objectFit: "contain", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.3))" }}
+          />
         </Link>
       </div>
 
