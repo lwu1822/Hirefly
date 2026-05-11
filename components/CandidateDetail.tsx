@@ -4,6 +4,12 @@ import type { Candidate } from "@/lib/data";
 
 const ATTR_LABELS: Record<string, string> = { gca: "General Cognitive Ability", rrk: "Role-Related Knowledge", leadership: "Leadership", googleyness: "Googleyness" };
 const ATTR_COLORS: Record<string, string> = { gca: "#2563eb", rrk: "#16a34a", leadership: "#d97706", googleyness: "#7c3aed" };
+const ATTR_DESCRIPTIONS: Record<string, string> = {
+  gca: "How quickly can this person learn and solve hard problems? Looks at academic trajectory, career growth rate, ability to operate in ambiguous or novel domains, and complexity of past technical decisions.",
+  rrk: "Does this person have the hands-on technical chops the role actually needs? Evaluates depth in required languages, frameworks, and systems — not just keyword matches, but evidence of real ownership.",
+  leadership: "Can this person drive outcomes beyond their immediate scope? Looks for mentorship, cross-team influence, owning projects end-to-end, and pushing initiatives forward without being told to.",
+  googleyness: "Would this person thrive in a collaborative, fast-moving environment? Signals include intellectual curiosity, community contributions, ethical judgment, and comfort navigating ambiguity.",
+};
 const AVATAR_COLORS = ["#dbeafe #1d4ed8","#dcfce7 #15803d","#fef3c7 #92400e","#ede9fe #6d28d9","#fee2e2 #dc2626","#fce7f3 #9d174d","#ecfdf5 #065f46","#fff7ed #9a3412","#f0f9ff #0369a1","#fdf4ff #7e22ce"];
 
 function pct(v: number) { return Math.round(v * 100); }
@@ -18,6 +24,7 @@ interface Props {
 }
 
 export default function CandidateDetail({ candidate: c, roleId, rank, onAction, onScored }: Props) {
+  const [expandedAttr, setExpandedAttr] = useState<string | null>(null);
   const [outreach, setOutreach] = useState<{personalized:string,generic:string}|null>(null);
   const [loadingOutreach, setLoadingOutreach] = useState(false);
   const [loadingScore, setLoadingScore] = useState(false);
@@ -117,15 +124,31 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text2)" }}>Score Breakdown</div>
           {aiScored && <span style={{ fontSize: 10, color: "#15803d", fontWeight: 500 }}>✦ updated by AI</span>}
         </div>
-        {(["gca","rrk","leadership","googleyness"] as const).map(k => (
-          <div key={k} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <div style={{ width: 180, fontSize: 13, color: "var(--text1)", flexShrink: 0 }}>{ATTR_LABELS[k]}</div>
-            <div style={{ flex: 1, height: 6, background: "var(--bg2)", borderRadius: 3, overflow: "hidden" }}>
-              <div style={{ width: `${pct(c[k])}%`, height: "100%", background: ATTR_COLORS[k], borderRadius: 3, transition: "width 0.4s" }} />
+        {(["gca","rrk","leadership","googleyness"] as const).map(k => {
+          const open = expandedAttr === k;
+          return (
+            <div key={k} style={{ marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  onClick={() => setExpandedAttr(open ? null : k)}
+                  style={{ width: 180, fontSize: 13, color: "var(--text1)", flexShrink: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, userSelect: "none" }}
+                >
+                  <span style={{ color: ATTR_COLORS[k], fontSize: 10 }}>{open ? "▼" : "▶"}</span>
+                  {ATTR_LABELS[k]}
+                </div>
+                <div style={{ flex: 1, height: 6, background: "var(--bg2)", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ width: `${pct(c[k])}%`, height: "100%", background: ATTR_COLORS[k], borderRadius: 3, transition: "width 0.4s" }} />
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, width: 34, textAlign: "right", color: ATTR_COLORS[k] }}>{pct(c[k])}</div>
+              </div>
+              {open && (
+                <div style={{ marginTop: 6, marginLeft: 16, padding: "8px 12px", background: "var(--bg2)", borderRadius: 6, borderLeft: `3px solid ${ATTR_COLORS[k]}`, fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>
+                  {ATTR_DESCRIPTIONS[k]}
+                </div>
+              )}
             </div>
-            <div style={{ fontSize: 13, fontWeight: 600, width: 34, textAlign: "right", color: ATTR_COLORS[k] }}>{pct(c[k])}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Evidence */}
