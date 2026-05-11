@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import type { Role, Company } from "@/lib/data";
 import { COMPANY_COLORS } from "@/lib/data";
 import Sidebar from "@/components/Sidebar";
-import { Users, ChevronDown, ChevronRight, RotateCcw, Plus, Building2 } from "lucide-react";
+import { Users, ChevronDown, ChevronRight, RotateCcw, Plus } from "lucide-react";
 
 type RoleWithCount = Role & { candidateCount: number };
 
@@ -91,14 +91,8 @@ export default function DashboardPage() {
             </div>
           </div>
           <div style={{ flex: 1 }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontSize: 13, color: "var(--text2)", background: "var(--bg2)", padding: "5px 14px", borderRadius: 8, fontWeight: 500 }}>
-              {companies.length} companies · {openRoles.length} roles · {totalCandidates} candidates
-            </div>
-            <button className="btn btn-primary" onClick={() => setCreating(true)} style={{ gap: 6 }}>
-              <Building2 size={15} strokeWidth={2.5} />
-              Add Company
-            </button>
+          <div style={{ fontSize: 13, color: "var(--text2)", background: "var(--bg2)", padding: "5px 14px", borderRadius: 8, fontWeight: 500 }}>
+            {companies.length} companies · {openRoles.length} roles · {totalCandidates} candidates
           </div>
         </div>
 

@@ -1,10 +1,62 @@
 "use client";
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Candidate, Role, RubricWeights, RoleCriteria, RoleLabels, CustomCategory } from "@/lib/data";
 import { DEFAULT_CRITERIA, DEFAULT_LABELS } from "@/lib/data";
 import Sidebar from "@/components/Sidebar";
 import CandidateDetail from "@/components/CandidateDetail";
+
+const ATTR_MINI_COLORS = ["#2563eb","#16a34a","#d97706","#7c3aed"];
+
+// 1-5 importance → rubric % weights (normalizes to sum ≈ 100)
+function importancesToRubric(imp: Record<string, number>, customCats: CustomCategory[] = []): RubricWeights {
+  const customW = customCats.reduce((a, c) => a + c.weight, 0);
+  const available = Math.max(10, 100 - customW);
+  const sum = imp.gca + imp.rrk + imp.leadership + imp.googleyness || 1;
+  return {
+    gca: Math.max(1, Math.round(imp.gca / sum * available)),
+    rrk: Math.max(1, Math.round(imp.rrk / sum * available)),
+    leadership: Math.max(1, Math.round(imp.leadership / sum * available)),
+    googleyness: Math.max(1, Math.round(imp.googleyness / sum * available)),
+  };
+}
+
+function rubricToImportances(r: RubricWeights): Record<string, number> {
+  const max = Math.max(r.gca, r.rrk, r.leadership, r.googleyness, 1);
+  return {
+    gca: Math.max(1, Math.round(r.gca / max * 5)),
+    rrk: Math.max(1, Math.round(r.rrk / max * 5)),
+    leadership: Math.max(1, Math.round(r.leadership / max * 5)),
+    googleyness: Math.max(1, Math.round(r.googleyness / max * 5)),
+  };
+}
+
+function ImportanceDots({ value, onChange, color }: { value: number; onChange: (v: number) => void; color: string }) {
+  const labels = ["", "Low", "Slight", "Medium", "High", "Critical"];
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+      {[1,2,3,4,5].map(n => (
+        <div
+          key={n}
+          title={labels[n]}
+          onClick={() => onChange(n)}
+          style={{
+            width: 22, height: 22, borderRadius: 6, cursor: "pointer",
+            background: n <= value ? color : "var(--bg2)",
+            border: `1.5px solid ${n <= value ? color : "var(--border)"}`,
+            transition: "all 0.1s",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 10, color: n <= value ? "white" : "var(--text3)", fontWeight: 700,
+          }}
+          onMouseEnter={e => { if (n > value) (e.currentTarget as HTMLDivElement).style.background = color + "30"; }}
+          onMouseLeave={e => { if (n > value) (e.currentTarget as HTMLDivElement).style.background = "var(--bg2)"; }}
+        >
+          {n}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface CandidateRowProps {
   c: Candidate & { overall: number };
@@ -18,70 +70,98 @@ interface CandidateRowProps {
   SCORE_STYLES: Record<string, React.CSSProperties>;
   scoreClass: (s: number) => string;
   pct: (v: number) => number;
+  outreachDrafted: boolean;
 }
 
-function CandidateRow({ c, rank, selected, setSelected, setShowDetail, folders, assignFolder, AVATAR_COLORS, SCORE_STYLES, scoreClass, pct }: CandidateRowProps) {
+function CandidateRow({ c, rank, selected, setSelected, setShowDetail, folders, assignFolder, AVATAR_COLORS, SCORE_STYLES, scoreClass, pct, outreachDrafted }: CandidateRowProps) {
   const [showFolderMenu, setShowFolderMenu] = useState(false);
   const colorIdx = Math.abs(c.id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % 10;
   const [bg, fg] = AVATAR_COLORS[colorIdx];
   const isSelected = selected === c.id;
   const sc = scoreClass(c.overall);
+  const isAdvanced = c.status === "advanced";
+  const isRejected = c.status === "rejected";
 
   return (
     <div
       onClick={() => { setSelected(c.id); setShowDetail(true); }}
       style={{
-        padding: "10px 14px",
+        padding: "12px 14px",
         borderBottom: "1px solid var(--border)",
         cursor: "pointer",
-        background: isSelected ? "var(--blue-bg)" : "transparent",
-        borderLeft: isSelected ? "3px solid var(--blue-text)" : "3px solid transparent",
+        background: isSelected ? "var(--blue-bg)" : isRejected ? "var(--red-bg)" : "transparent",
+        borderLeft: isSelected ? "3px solid var(--blue-text)" : isAdvanced ? "3px solid #16a34a" : isRejected ? "3px solid var(--red-text)" : "3px solid transparent",
         transition: "background 0.1s",
+        opacity: isRejected ? 0.55 : 1,
       }}
     >
+      {/* Row 1: avatar + name + score */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 34, height: 34, borderRadius: "50%", background: bg, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
-          {c.name.split(" ").map((w: string) => w[0]).join("").slice(0,2)}
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", background: bg, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 600 }}>
+            {c.name.split(" ").map((w: string) => w[0]).join("").slice(0,2)}
+          </div>
+          <div style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", background: "var(--bg3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "var(--text3)", border: "1px solid var(--border)" }}>
+            {rank}
+          </div>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text1)", marginBottom: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</div>
-          <div style={{ fontSize: 11, color: "var(--text3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title} · {c.company}</div>
+          <div style={{ fontSize: 11, color: "var(--text3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.company} · {c.yoe}yr exp</div>
         </div>
         <div style={{ ...SCORE_STYLES[sc], fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 8, flexShrink: 0 }}>{pct(c.overall)}%</div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, paddingLeft: 44 }}>
-        {c.folder && (
-          <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 8, background: "#fef3c7", color: "#92400e", fontWeight: 500 }}>📁 {c.folder}</span>
+
+      {/* Row 2: mini score bars */}
+      <div style={{ display: "flex", gap: 4, marginTop: 8, paddingLeft: 46 }}>
+        {([["gca","#2563eb"],["rrk","#16a34a"],["leadership","#d97706"],["googleyness","#7c3aed"]] as [keyof typeof c, string][]).map(([k, col]) => {
+          const v = c[k] as number;
+          return (
+            <div key={k} style={{ flex: 1 }}>
+              <div style={{ height: 4, background: "var(--bg2)", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ width: `${Math.round(v * 100)}%`, height: "100%", background: col, borderRadius: 2 }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Row 3: skills + status badges */}
+      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6, paddingLeft: 46, flexWrap: "wrap" }}>
+        {c.skills.slice(0, 2).map(s => (
+          <span key={s} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 8, background: "var(--bg2)", color: "var(--text3)", border: "1px solid var(--border)" }}>{s}</span>
+        ))}
+        {isAdvanced && (
+          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 8, background: "#dcfce7", color: "#15803d", fontWeight: 600, border: "1px solid #86efac" }}>📞 Screened</span>
         )}
-        <div style={{ position: "relative" }}>
+        {isRejected && (
+          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 8, background: "#fee2e2", color: "#dc2626", fontWeight: 600 }}>✕ Rejected</span>
+        )}
+        {outreachDrafted && !isRejected && (
+          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 8, background: "#ede9fe", color: "#6d28d9", fontWeight: 600, border: "1px solid #c4b5fd" }}>✉ Outreach</span>
+        )}
+        {c.folder && (
+          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 8, background: "#fef3c7", color: "#92400e", fontWeight: 500 }}>📁 {c.folder}</span>
+        )}
+        <div style={{ position: "relative", marginLeft: "auto" }}>
           <button
             onClick={e => { e.stopPropagation(); setShowFolderMenu(v => !v); }}
-            style={{ fontSize: 10, padding: "1px 7px", borderRadius: 8, background: "var(--bg2)", color: "var(--text3)", border: "1px solid var(--border)", cursor: "pointer" }}
+            style={{ fontSize: 10, padding: "1px 6px", borderRadius: 8, background: "var(--bg2)", color: "var(--text3)", border: "1px solid var(--border)", cursor: "pointer" }}
           >
-            {c.folder ? "Move" : "📁 Add to folder"}
+            {c.folder ? "⋯" : "📁"}
           </button>
           {showFolderMenu && (
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{ position: "absolute", top: 24, left: 0, zIndex: 100, background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", minWidth: 150, padding: 4 }}
-            >
-              {folders.length === 0 && (
-                <div style={{ padding: "6px 10px", fontSize: 11, color: "var(--text3)" }}>No folders yet — create one in the panel →</div>
-              )}
+            <div onClick={e => e.stopPropagation()} style={{ position: "absolute", top: 24, right: 0, zIndex: 100, background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", minWidth: 150, padding: 4 }}>
+              {folders.length === 0 && <div style={{ padding: "6px 10px", fontSize: 11, color: "var(--text3)" }}>No folders yet</div>}
               {folders.map(f => (
-                <div
-                  key={f}
-                  onClick={() => { assignFolder(c.id, f); setShowFolderMenu(false); }}
-                  style={{ padding: "6px 10px", fontSize: 12, cursor: "pointer", borderRadius: 6, background: c.folder === f ? "var(--blue-bg)" : "transparent", color: c.folder === f ? "var(--blue-text)" : "var(--text1)" }}
-                >
+                <div key={f} onClick={() => { assignFolder(c.id, f); setShowFolderMenu(false); }}
+                  style={{ padding: "6px 10px", fontSize: 12, cursor: "pointer", borderRadius: 6, background: c.folder === f ? "var(--blue-bg)" : "transparent", color: c.folder === f ? "var(--blue-text)" : "var(--text1)" }}>
                   📁 {f}
                 </div>
               ))}
               {c.folder && (
-                <div
-                  onClick={() => { assignFolder(c.id, null); setShowFolderMenu(false); }}
-                  style={{ padding: "6px 10px", fontSize: 12, cursor: "pointer", borderRadius: 6, color: "var(--red-text)" }}
-                >
+                <div onClick={() => { assignFolder(c.id, null); setShowFolderMenu(false); }}
+                  style={{ padding: "6px 10px", fontSize: 12, cursor: "pointer", borderRadius: 6, color: "var(--red-text)" }}>
                   ✕ Remove from folder
                 </div>
               )}
@@ -138,11 +218,14 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
   const [newCatLabel, setNewCatLabel] = useState("");
   const [newCatCriteria, setNewCatCriteria] = useState("");
   const [newCatWeight, setNewCatWeight] = useState(20);
+  const [importances, setImportances] = useState<Record<string, number>>({ gca: 3, rrk: 4, leadership: 2, googleyness: 2 });
+  const [outreachDraftedSet, setOutreachDraftedSet] = useState<Set<string>>(new Set());
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch(`/api/roles`).then(r => r.json()).then(d => {
       const r = d.roles.find((x: Role) => x.id === roleId);
-      if (r) { setRole(r); setRubric(r.rubric); setCriteria({ ...DEFAULT_CRITERIA, ...r.criteria }); setLabels({ ...DEFAULT_LABELS, ...r.labels }); setCustomCategories(r.customCategories ?? []); }
+      if (r) { setRole(r); setRubric(r.rubric); setImportances(rubricToImportances(r.rubric)); setCriteria({ ...DEFAULT_CRITERIA, ...r.criteria }); setLabels({ ...DEFAULT_LABELS, ...r.labels }); setCustomCategories(r.customCategories ?? []); }
     });
     fetch(`/api/roles/${roleId}/candidates`).then(r => r.json()).then(d => {
       setCandidates(d.candidates);
@@ -158,16 +241,26 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
       body: JSON.stringify({ roleId, rubric: newRubric }),
     });
     const d = await res.json();
-    setCandidates(d.candidates);
+    // Preserve client-side folder assignments since rerank re-fetches from server
+    setCandidates(prev => {
+      const folderMap = new Map(prev.map(c => [c.id, c.folder]));
+      const statusMap = new Map(prev.map(c => [c.id, c.status]));
+      return d.candidates.map((c: Candidate & { overall: number }) => ({
+        ...c,
+        folder: folderMap.get(c.id) ?? c.folder,
+        status: statusMap.get(c.id) ?? c.status,
+      }));
+    });
     setReranking(false);
   }, [roleId]);
 
-  let debounceTimer: ReturnType<typeof setTimeout>;
-  function handleWeightChange(key: keyof RubricWeights, val: number) {
-    const next = { ...rubric, [key]: val };
-    setRubric(next);
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => rerank(next), 500);
+  function handleImportanceChange(key: string, val: number) {
+    const newImp = { ...importances, [key]: val };
+    setImportances(newImp);
+    const newRubric = importancesToRubric(newImp, customCategories);
+    setRubric(newRubric);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => rerank(newRubric), 500);
   }
 
   async function handleAction(candidateId: string, action: "advanced" | "rejected") {
@@ -175,8 +268,12 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: candidateId, status: action }),
     });
-    setCandidates(prev => prev.filter(c => c.id !== candidateId));
-    setSelected(null); setShowDetail(false);
+    // Keep in list with status badge instead of removing
+    setCandidates(prev => prev.map(c => c.id === candidateId ? { ...c, status: action } : c));
+  }
+
+  function markOutreachDrafted(candidateId: string) {
+    setOutreachDraftedSet(prev => new Set([...prev, candidateId]));
   }
 
   function handleScored(
@@ -343,7 +440,7 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
           <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: "-0.01em" }}>{role?.title ?? "Loading…"}</div>
-            {role && <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 1 }}>{role.team} · {role.level}</div>}
+            {role && <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 1 }}>{role.team} · {role.level}{role.description ? ` · ${role.description.slice(0, 80)}${role.description.length > 80 ? "…" : ""}` : ""}</div>}
           </div>
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 12, color: reranking ? "var(--blue-text)" : "var(--text3)", fontWeight: reranking ? 500 : 400 }}>
@@ -363,7 +460,7 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
         </div>
         <div className="content-area">
           {/* Candidate list */}
-          <div style={{ width: 320, flexShrink: 0, borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", background: "var(--bg3)" }}>
+          <div style={{ width: 380, flexShrink: 0, borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", background: "var(--bg3)" }}>
             {/* Search + toolbar */}
             <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search candidates…" style={{ width: "100%", padding: "7px 12px", fontSize: 13, marginBottom: 8 }} />
@@ -422,10 +519,10 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
                           {folders.includes(company) ? "📁 ✓" : "📁"}
                         </button>
                       </div>
-                      {cands.map(c => <CandidateRow key={c.id} c={c} rank={filtered.indexOf(c)} selected={selected} setSelected={setSelected} setShowDetail={setShowDetail} folders={folders} assignFolder={assignFolder} AVATAR_COLORS={AVATAR_COLORS} SCORE_STYLES={SCORE_STYLES} scoreClass={scoreClass} pct={pct} />)}
+                      {cands.map(c => <CandidateRow key={c.id} c={c} rank={filtered.indexOf(c)+1} selected={selected} setSelected={setSelected} setShowDetail={setShowDetail} folders={folders} assignFolder={assignFolder} AVATAR_COLORS={AVATAR_COLORS} SCORE_STYLES={SCORE_STYLES} scoreClass={scoreClass} pct={pct} outreachDrafted={outreachDraftedSet.has(c.id)} />)}
                     </div>
                   ))
-                : displayed.map((c) => <CandidateRow key={c.id} c={c} rank={filtered.indexOf(c)} selected={selected} setSelected={setSelected} setShowDetail={setShowDetail} folders={folders} assignFolder={assignFolder} AVATAR_COLORS={AVATAR_COLORS} SCORE_STYLES={SCORE_STYLES} scoreClass={scoreClass} pct={pct} />)
+                : displayed.map((c) => <CandidateRow key={c.id} c={c} rank={filtered.indexOf(c)+1} selected={selected} setSelected={setSelected} setShowDetail={setShowDetail} folders={folders} assignFolder={assignFolder} AVATAR_COLORS={AVATAR_COLORS} SCORE_STYLES={SCORE_STYLES} scoreClass={scoreClass} pct={pct} outreachDrafted={outreachDraftedSet.has(c.id)} />)
               }
               {filtered.length === 0 && (
                 <div style={{ padding: 32, textAlign: "center", color: "var(--text3)", fontSize: 13 }}>No candidates match.</div>
@@ -442,7 +539,7 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
           {/* Detail panel */}
           <div style={{ flex: 1, overflowY: "auto", background: "var(--bg)" }}>
             {selectedCand && showDetail
-              ? <CandidateDetail candidate={selectedCand} roleId={roleId} rank={filtered.findIndex(c=>c.id===selectedCand.id)+1} onAction={handleAction} onScored={handleScored} labels={labels} customCategories={customCategories} rubric={role?.rubric} />
+              ? <CandidateDetail candidate={selectedCand} roleId={roleId} rank={filtered.findIndex(c=>c.id===selectedCand.id)+1} onAction={handleAction} onScored={handleScored} labels={labels} customCategories={customCategories} rubric={role?.rubric} onOutreachGenerated={markOutreachDrafted} />
               : <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 12, color: "var(--text3)" }}>
                   <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>👤</div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>Select a candidate</div>
@@ -452,39 +549,41 @@ export default function RolePipelinePage({ params }: { params: Promise<{ roleId:
           </div>
 
           {/* Live rubric editor */}
-          <div style={{ width: 264, flexShrink: 0, borderLeft: "1px solid var(--border)", background: "var(--bg3)", padding: "18px 16px", overflowY: "auto" }}>
+          <div style={{ width: 272, flexShrink: 0, borderLeft: "1px solid var(--border)", background: "var(--bg3)", padding: "18px 16px", overflowY: "auto" }}>
             <div style={{ fontWeight: 700, fontSize: 14, letterSpacing: "-0.01em", marginBottom: 3 }}>Rubric Editor</div>
-            <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 18, lineHeight: 1.4 }}>Drag weights — list re-ranks live</div>
+            <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 14, lineHeight: 1.4 }}>Set 1–5 importance — candidates re-rank live</div>
             {(["gca","rrk","leadership","googleyness"] as const).map(k => (
-              <div key={k} style={{ marginBottom: 18 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    {labels[k]}
-                  </span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: ATTR_COLORS[k] }}>{rubric[k]}%</span>
+              <div key={k} style={{ marginBottom: 16, padding: "10px 12px", background: "var(--bg2)", borderRadius: 8, borderLeft: `3px solid ${ATTR_COLORS[k]}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text1)" }}>{labels[k]}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: ATTR_COLORS[k], background: "var(--bg3)", padding: "1px 7px", borderRadius: 8 }}>{rubric[k]}%</span>
                 </div>
-                <input type="range" min="5" max="60" step="1" value={rubric[k]}
-                  onChange={e => handleWeightChange(k, parseInt(e.target.value))}
-                  style={{ width: "100%", accentColor: ATTR_COLORS[k] }} />
-                <div style={{ fontSize: 10, color: "var(--text3)" }}>{ATTR_LABELS[k]}</div>
+                <ImportanceDots
+                  value={importances[k] ?? 3}
+                  onChange={val => handleImportanceChange(k, val)}
+                  color={ATTR_COLORS[k]}
+                />
+                <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 5 }}>
+                  {["","Not scored","Minor factor","Moderate","Important","Critical"][importances[k] ?? 3]}
+                </div>
               </div>
             ))}
             {/* Custom categories */}
             {customCategories.map(cat => (
-              <div key={cat.key} style={{ marginBottom: 18 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{cat.label}</span>
+              <div key={cat.key} style={{ marginBottom: 16, padding: "10px 12px", background: "#fdf4ff", borderRadius: 8, borderLeft: "3px solid #7c3aed", border: "1px solid #e9d5ff" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#6d28d9" }}>{cat.label}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#7c3aed" }}>{cat.weight}%</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", background: "white", padding: "1px 7px", borderRadius: 8 }}>{cat.weight}%</span>
                     <button onClick={() => removeCustomCategory(cat.key)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 14, lineHeight: 1, padding: 0 }}
                       onMouseEnter={e => (e.currentTarget.style.color = "var(--red-text)")}
                       onMouseLeave={e => (e.currentTarget.style.color = "var(--text3)")}>×</button>
                   </div>
                 </div>
-                <input type="range" min="5" max="60" step="1" value={cat.weight}
+                <input type="range" min="5" max="50" step="5" value={cat.weight}
                   onChange={e => updateCustomCatWeight(cat.key, parseInt(e.target.value))}
                   style={{ width: "100%", accentColor: "#7c3aed" }} />
-                <div style={{ fontSize: 10, color: "var(--text3)", fontStyle: "italic" }}>{cat.criteria.slice(0, 60)}{cat.criteria.length > 60 ? "…" : ""}</div>
+                <div style={{ fontSize: 10, color: "#6d28d9", marginTop: 4, fontStyle: "italic" }}>{cat.criteria.slice(0, 60)}{cat.criteria.length > 60 ? "…" : ""}</div>
               </div>
             ))}
 

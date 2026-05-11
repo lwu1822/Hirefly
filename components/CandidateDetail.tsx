@@ -22,12 +22,13 @@ interface Props {
   rank: number;
   onAction: (id: string, action: "advanced" | "rejected") => void;
   onScored?: (id: string, scores: { gca: number; rrk: number; leadership: number; googleyness: number; evidence: string[]; customScores?: Record<string, number>; rationale?: Record<string, string> }) => void;
+  onOutreachGenerated?: (id: string) => void;
   labels?: RoleLabels;
   customCategories?: CustomCategory[];
   rubric?: RubricWeights;
 }
 
-export default function CandidateDetail({ candidate: c, roleId, rank, onAction, onScored, labels: labelsProp, customCategories = [], rubric }: Props) {
+export default function CandidateDetail({ candidate: c, roleId, rank, onAction, onScored, onOutreachGenerated, labels: labelsProp, customCategories = [], rubric }: Props) {
   const labels = { ...DEFAULT_LABELS, ...labelsProp };
   const [expandedAttr, setExpandedAttr] = useState<string | null>(null);
   const [outreach, setOutreach] = useState<{personalized:string,generic:string}|null>(null);
@@ -55,6 +56,7 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
       });
       const d = await res.json();
       setOutreach(d);
+      onOutreachGenerated?.(c.id);
     } catch { setOutreach({ personalized: "Error generating outreach. Check GROQ_API_KEY.", generic: "" }); }
     setLoadingOutreach(false);
   }
@@ -126,9 +128,13 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
-          <button className="btn btn-primary btn-sm" onClick={() => onAction(c.id, "advanced")}>📞 Phone Screen</button>
-          <button className="btn btn-sm" onClick={fetchOutreach}>✉ Draft Outreach</button>
-          <button className="btn btn-sm" onClick={() => setShowResume(s=>!s)}>📄 {showResume?"Hide":"Show"} Resume</button>
+          <button className="btn btn-primary btn-sm" onClick={() => onAction(c.id, "advanced")} style={{ background: c.status === "advanced" ? "#15803d" : undefined }}>
+            {c.status === "advanced" ? "✓ Phone Screened" : "📞 Phone Screen"}
+          </button>
+          <button className="btn btn-sm" onClick={fetchOutreach} style={{ background: outreach ? "var(--green-bg)" : undefined, color: outreach ? "var(--green-text)" : undefined }}>
+            {outreach ? "✓ Outreach Drafted" : "✉ Draft Outreach"}
+          </button>
+          <button className="btn btn-sm" onClick={() => setShowResume(s=>!s)} style={{ background: showResume ? "var(--bg2)" : undefined }}>📄 {showResume?"Hide":"Show"} Resume</button>
           <button
             className="btn btn-sm"
             onClick={runAiScore}
@@ -145,6 +151,14 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
           </div>
         )}
       </div>
+
+      {/* Resume — shown at top when toggled */}
+      {showResume && (
+        <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text2)", marginBottom: 12 }}>Raw Resume Text</div>
+          <pre style={{ fontSize: 12, lineHeight: 1.6, whiteSpace: "pre-wrap", color: "var(--text1)", fontFamily: "monospace", margin: 0 }}>{c.resumeText}</pre>
+        </div>
+      )}
 
       {/* Score breakdown */}
       <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 14 }}>
@@ -325,14 +339,6 @@ export default function CandidateDetail({ candidate: c, roleId, rank, onAction, 
           </div>
         )}
       </div>
-
-      {/* Resume text */}
-      {showResume && (
-        <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text2)", marginBottom: 12 }}>Raw Resume Text</div>
-          <pre style={{ fontSize: 12, lineHeight: 1.6, whiteSpace: "pre-wrap", color: "var(--text1)", fontFamily: "monospace", margin: 0 }}>{c.resumeText}</pre>
-        </div>
-      )}
 
       {/* Outreach */}
       <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 14 }}>
